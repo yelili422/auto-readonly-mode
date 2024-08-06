@@ -4,7 +4,7 @@
   "description": "Automatically enable read-only mode when the current file is located outside the workspace.",
   "publisher": "yeli",
   "repository": "https://github.com/yelili422/auto-readonly-mode",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "engines": {
     "vscode": "^1.91.0"
   },
