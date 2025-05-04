@@ -5,11 +5,20 @@ interface IGlobPatterns {
 	[filepattern: string]: boolean;
 }
 
+const defaultReadonlyExclude: IGlobPatterns = {
+    '**/settings.json': true,
+    '**/tasks.json': true,
+    '**/keybindings.json': true,
+    '**/*.code-workspace': true,
+};
+
 export function activate(context: vscode.ExtensionContext) {
     console.log('[auto-readonly-mode] Extension "auto-readonly-mode" is now active!');
 
     const filesConfig = vscode.workspace.getConfiguration('files');
     const readonlyExclude = filesConfig.get<IGlobPatterns>('readonlyExclude') ?? {};
+
+    const mergedReadonlyExclude = { ...defaultReadonlyExclude, ...readonlyExclude };
 
     let disposable = vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) {
@@ -19,11 +28,15 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
+            if (editor.document.isUntitled) {
+                return;
+            }
+
             const currentFileUri = editor.document.uri;
             const currentFilePath = currentFileUri.fsPath;
 
-            const isReadonlyExclude = Object.keys(readonlyExclude).some(pattern => {
-                if (readonlyExclude[pattern]) {
+            const isReadonlyExclude = Object.keys(mergedReadonlyExclude).some(pattern => {
+                if (mergedReadonlyExclude[pattern]) {
                     const normalizedPattern = pattern.replace(/\\/g, '/');
                     const normalizedFilePath = currentFilePath.replace(/\\/g, '/');
 
@@ -43,7 +56,6 @@ export function activate(context: vscode.ExtensionContext) {
                 );
             }
         }
-
     });
 
     context.subscriptions.push(disposable);
