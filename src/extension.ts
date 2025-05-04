@@ -1,7 +1,15 @@
 import * as vscode from 'vscode';
+import { minimatch } from 'minimatch';
+
+interface IGlobPatterns {
+	[filepattern: string]: boolean;
+}
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Extension "project-workspace-readonly" is now active!');
+    console.log('[auto-readonly-mode] Extension "auto-readonly-mode" is now active!');
+
+    const filesConfig = vscode.workspace.getConfiguration('files');
+    const readonlyExclude = filesConfig.get<IGlobPatterns>('readonlyExclude') ?? {};
 
     let disposable = vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) {
@@ -11,9 +19,25 @@ export function activate(context: vscode.ExtensionContext) {
                 return;
             }
 
-            const document = editor.document;
-            const isInWorkspace = vscode.workspace.getWorkspaceFolder(document.uri) !== undefined;
+            const currentFileUri = editor.document.uri;
+            const currentFilePath = currentFileUri.fsPath;
+
+            const isReadonlyExclude = Object.keys(readonlyExclude).some(pattern => {
+                if (readonlyExclude[pattern]) {
+                    const normalizedPattern = pattern.replace(/\\/g, '/');
+                    const normalizedFilePath = currentFilePath.replace(/\\/g, '/');
+
+                    return minimatch(normalizedFilePath, normalizedPattern);
+                }
+                return false;
+            });
+            if (isReadonlyExclude) {
+                return;
+            }
+
+            const isInWorkspace = vscode.workspace.getWorkspaceFolder(currentFileUri) !== undefined;
             if (!isInWorkspace) {
+                console.log("[auto-readonly-mode] Enabling read-only mode for file: " + currentFilePath);
                 vscode.commands.executeCommand(
                     'workbench.action.files.setActiveEditorReadonlyInSession',
                 );
