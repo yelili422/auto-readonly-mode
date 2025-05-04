@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
+import { LRUCache } from 'lru-cache';
 
 interface IGlobPatterns {
 	[filepattern: string]: boolean;
@@ -20,6 +21,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     const mergedReadonlyExclude = { ...defaultReadonlyExclude, ...readonlyExclude };
 
+    const activeCache = new LRUCache<string, any>({
+        max: 256,
+    });
+
     let disposable = vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) {
             if (vscode.workspace.workspaceFolders === undefined
@@ -34,6 +39,11 @@ export function activate(context: vscode.ExtensionContext) {
 
             const currentFileUri = editor.document.uri;
             const currentFilePath = currentFileUri.fsPath;
+
+            if (activeCache.has(currentFilePath)) {
+                return;
+            }
+            activeCache.set(currentFilePath, null);
 
             const isReadonlyExclude = Object.keys(mergedReadonlyExclude).some(pattern => {
                 if (mergedReadonlyExclude[pattern]) {
